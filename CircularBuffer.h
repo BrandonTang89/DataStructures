@@ -9,7 +9,7 @@ class CircularBuffer {
     static constexpr size_t min_cap{8}; // minimum capacity, ovoid unnecessary resizing
     struct AlignedDeleter {
         void operator()(std::byte *ptr) const {
-            ::operator delete[](ptr, std::align_val_t{alignof(T)});
+            operator delete[](ptr, std::align_val_t{alignof(T)});
         }
     };
     std::unique_ptr<std::byte[], AlignedDeleter> data_storage;
@@ -65,7 +65,7 @@ class CircularBuffer {
     template<typename... Args>
     void emplace_front_impl(Args &&... args) {
         if (size_ < capacity_) [[likely]] {
-            begin = (begin == 0 ? capacity_ - 1 : begin - 1);
+            begin = begin == 0 ? capacity_ - 1 : begin - 1;
             new(&data[begin]) T(std::forward<Args>(args)...);
         } else {
             // Buffer is full, need to resize
@@ -125,7 +125,7 @@ public:
 
     T pop_back() {
         assert(size_ > 0 && "Cannot pop from an empty buffer");
-        end = (end == 0 ? capacity_ - 1 : end - 1);
+        end = end == 0 ? capacity_ - 1 : end - 1;
         T value = std::move(data[end]);
         data[end].~T();
         --size_;

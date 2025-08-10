@@ -1,4 +1,3 @@
-#include <iostream>
 #include <catch2/catch_test_macros.hpp>
 #include "Deque.h"
 #include <string>
@@ -137,7 +136,7 @@ TEST_CASE("Deque operator[] access", "[Deque]") {
         }
 
         // Verify all elements are accessible
-        for (size_t i = 0; i < deque.size(); ++i) {
+        for (size_t i = 0; i < deque.size(); ++i) { // NOLINT
             // This should not throw and should return a valid value
             REQUIRE_NOTHROW(deque[i]);
         }
@@ -225,7 +224,7 @@ TEST_CASE("Deque stress test", "[Deque][Stress]") {
         REQUIRE(deque.size() == 50000); // 1000 * (100 - 50)
 
         // Test random access still works
-        for (size_t i = 0; i < std::min(deque.size(), size_t(100)); ++i) {
+        for (size_t i = 0; i < std::min(deque.size(), 100zu); ++i) {
             REQUIRE_NOTHROW(deque[i]);
         }
     }
@@ -255,7 +254,7 @@ TEST_CASE("Deque Constructors", "[Deque]") {
 
 TEST_CASE("Deque Iterator operations", "[Deque][Iterator]") {
     SECTION("Basic iterator functionality") {
-        Deque<int> deque = {1, 2, 3, 4, 5};
+        Deque deque = {1, 2, 3, 4, 5};
 
         // Test begin() and end()
         auto it = deque.begin();
@@ -268,10 +267,11 @@ TEST_CASE("Deque Iterator operations", "[Deque][Iterator]") {
         *it = 10;
         REQUIRE(*it == 10);
         REQUIRE(deque[0] == 10);
+        REQUIRE(*(end_it.prev()) == 5); // Should point to last element
     }
 
     SECTION("Iterator increment operations") {
-        Deque<int> deque = {1, 2, 3, 4, 5};
+        Deque deque = {1, 2, 3, 4, 5};
         auto it = deque.begin();
 
         // Test prefix increment
@@ -288,7 +288,7 @@ TEST_CASE("Deque Iterator operations", "[Deque][Iterator]") {
     }
 
     SECTION("Iterator decrement operations") {
-        Deque<int> deque = {1, 2, 3, 4, 5};
+        Deque deque = {1, 2, 3, 4, 5};
         auto it = deque.begin();
 
         // Move to middle
@@ -373,7 +373,7 @@ TEST_CASE("Deque Iterator operations", "[Deque][Iterator]") {
         }
 
         // Expected order: [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]
-        std::vector<int> expected = {-5, -4, -3, -2, -1, 1, 2, 3, 4, 5};
+        std::vector expected = {-5, -4, -3, -2, -1, 1, 2, 3, 4, 5};
 
         int index = 0;
         for (auto it = deque.begin(); it.current_array != nullptr; ++it) {
@@ -411,7 +411,7 @@ TEST_CASE("Deque Iterator operations", "[Deque][Iterator]") {
     }
 
     SECTION("Iterator prev() method") {
-        Deque<int> deque = {1, 2, 3, 4, 5};
+        Deque deque = {1, 2, 3, 4, 5};
 
         // Start from end and work backwards using prev()
         auto it = deque.end().prev();
