@@ -89,7 +89,7 @@ TEST_CASE("Deque pop operations", "[Deque]") {
         REQUIRE(deque.pop_back() == 2);
         REQUIRE(deque.size() == 1);
         REQUIRE(deque.pop_back() == 1);
-        REQUIRE(deque.size() == 0);
+        REQUIRE(deque.size() == 0); // NOLINT
     }
 
     SECTION("Pop from front") {
@@ -102,7 +102,7 @@ TEST_CASE("Deque pop operations", "[Deque]") {
         REQUIRE(deque.pop_front() == 2);
         REQUIRE(deque.size() == 1);
         REQUIRE(deque.pop_front() == 3);
-        REQUIRE(deque.size() == 0);
+        REQUIRE(deque.size() == 0); // NOLINT
     }
 
     SECTION("Mix pop operations") {
@@ -226,5 +226,27 @@ TEST_CASE("Deque stress test", "[Deque][Stress]") {
         for (size_t i = 0; i < std::min(deque.size(), size_t(100)); ++i) {
             REQUIRE_NOTHROW(deque[i]);
         }
+    }
+}
+
+TEST_CASE("Deque Constructors", "[Deque]") {
+    SECTION("Initializer list construction") {
+        const Deque deque = {1, 2, 3, 4, 5};
+        REQUIRE(deque.size() == 5);
+        REQUIRE(deque[0] == 1);
+        REQUIRE(deque[1] == 2);
+        REQUIRE(deque[2] == 3);
+        REQUIRE(deque[3] == 4);
+        REQUIRE(deque[4] == 5);
+        REQUIRE(deque.front() == 1);
+        REQUIRE(deque.back() == 5);
+    }
+
+    SECTION("Initializer list with strings") {
+        Deque<std::string> deque = {"one", "two", "three"};
+        REQUIRE(deque.size() == 3);
+        REQUIRE(deque[0] == "one");
+        REQUIRE(deque[1] == "two");
+        REQUIRE(deque[2] == "three");
     }
 }

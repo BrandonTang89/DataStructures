@@ -24,9 +24,10 @@ class Deque {
         FixedArray *next{nullptr};
         FixedArray *prev{nullptr};
 
-        T &operator[](size_t index) {
+        template<class Self>
+        auto&& operator[](this Self&& self, size_t index) {
             assert(index < fixed_arr_n_elem && "Index out of bounds");
-            return data[index];
+            return self.data[index];
         }
     };
 
@@ -37,26 +38,26 @@ class Deque {
     size_t last_idx = 0; // inv: 0 < last_idx <= fixed_arr_n_elem
     size_t size_{0};
 
-    template<typename ValueType> requires std::same_as<std::remove_cvref_t<ValueType>, T>
-    void push_front_impl(ValueType &&value) {
+    template<typename... Args>
+    void emplace_front_impl(Args &&... value) {
         if (first_idx == 0) [[unlikely]] {
             buffer.push_front(std::make_unique<FixedArray>());
             first_idx = fixed_arr_n_elem;
         }
         FixedArray &first_array = *buffer.front();
         --first_idx;
-        new(&first_array[first_idx]) T(std::forward<ValueType>(value));
+        new(&first_array[first_idx]) T(std::forward<Args>(value)...);
         ++size_;
     }
 
-    template<typename ValueType> requires std::same_as<std::remove_cvref_t<ValueType>, T>
-    void push_back_impl(ValueType &&value) {
+    template<typename... Args>
+    void emplace_back_impl(Args &&... value) {
         if (last_idx == fixed_arr_n_elem) [[unlikely]] {
             buffer.push_back(std::make_unique<FixedArray>());
             last_idx = 0;
         }
         FixedArray &last_array = *buffer.back();
-        new(&last_array[last_idx]) T(std::forward<ValueType>(value));
+        new(&last_array[last_idx]) T(std::forward<Args>(value)...);
         ++last_idx;
         ++size_;
     }
@@ -66,20 +67,37 @@ public:
         buffer.push_back(std::make_unique<FixedArray>());
     }
 
-    void push_back(const T &value) {
-        push_back_impl(value);
+    Deque(std::initializer_list<T> init) {
+        buffer.push_back(std::make_unique<FixedArray>());
+        for (const auto &value : init) {
+            emplace_back_impl(value);
+        }
     }
 
-    void push_back(T &&value) {
-        push_back_impl(std::move(value));
+    void push_back(const T &value) requires std::copy_constructible<T> {
+        emplace_back_impl(value);
     }
 
-    void push_front(const T &value) {
-        push_front_impl(value);
+    void push_back(T &&value) requires std::move_constructible<T> {
+        emplace_back_impl(std::move(value));
     }
 
-    void push_front(T &&value) {
-        push_front_impl(std::move(value));
+    template<typename... Args>
+    void emplace_back(Args &&... args) requires std::constructible_from<T, Args...> {
+        emplace_back_impl(std::forward<Args>(args)...);
+    }
+
+    void push_front(const T &value) requires std::copy_constructible<T> {
+        emplace_front_impl(value);
+    }
+
+    void push_front(T &&value) requires std::move_constructible<T> {
+        emplace_front_impl(std::move(value));
+    }
+
+    template<typename... Args>
+    void emplace_front(Args &&... args) requires std::constructible_from<T, Args...> {
+        emplace_front_impl(std::forward<Args>(args)...);
     }
 
     T pop_back() {
@@ -110,29 +128,32 @@ public:
         return value;
     }
 
-    T &operator[](const size_t index) {
-        assert(index < size_ && "Index out of bounds");
+    template <class Self>
+    auto&& operator[](this Self&& self, const size_t index) {
+        assert(index < self.size_ && "Index out of bounds");
 
-        const size_t first_size = fixed_arr_n_elem - first_idx;
+        const size_t first_size = fixed_arr_n_elem - self.first_idx;
         if (index < first_size) {
             // Access within the first FixedArray
-            return (*buffer.front())[first_idx + index];
+            return (*self.buffer.front())[self.first_idx + index];
         }
 
         const size_t adjusted_index = index - first_size;
         const size_t num_full_arrays = adjusted_index / fixed_arr_n_elem;
         const size_t index_in_array = adjusted_index % fixed_arr_n_elem;
-        return (*buffer[num_full_arrays + 1])[index_in_array];
+        return (*self.buffer[num_full_arrays + 1])[index_in_array];
     }
 
-    T &back() {
-        assert(size_ > 0 && "Deque is empty");
-        return (*buffer.back())[last_idx - 1];
+    template<typename Self>
+    auto&& back(this Self&& self) {
+        assert(self.size_ > 0 && "Deque is empty");
+        return (*self.buffer.back())[self.last_idx - 1];
     }
 
-    T &front() {
-        assert(size_ > 0 && "Deque is empty");
-        return (*buffer.front())[first_idx];
+    template<typename Self>
+    auto&& front(this Self&& self) {
+        assert(self.size_ > 0 && "Deque is empty");
+        return (*self.buffer.front())[self.first_idx];
     }
 
     [[nodiscard]] size_t size() const {

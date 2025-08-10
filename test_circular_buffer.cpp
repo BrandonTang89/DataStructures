@@ -34,6 +34,8 @@ TEST_CASE("CircularBuffer with strings", "[CircularBuffer]") {
     SECTION("Push string elements") {
         REQUIRE_NOTHROW(buffer.push_back("hello"));
         REQUIRE_NOTHROW(buffer.push_back("world"));
+        buffer.pop_back();
+        buffer.pop_back();
     }
 }
 
