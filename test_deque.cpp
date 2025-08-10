@@ -1,11 +1,13 @@
+#include <iostream>
 #include <catch2/catch_test_macros.hpp>
 #include "Deque.h"
 #include <string>
+#include <vector>
 
 TEST_CASE("Deque construction", "[Deque]") {
     SECTION("Default construction") {
         const Deque<int> deque;
-        REQUIRE(deque.size() == 0);
+        REQUIRE(deque.size() == 0); // NOLINT
     }
 }
 
@@ -248,5 +250,199 @@ TEST_CASE("Deque Constructors", "[Deque]") {
         REQUIRE(deque[0] == "one");
         REQUIRE(deque[1] == "two");
         REQUIRE(deque[2] == "three");
+    }
+}
+
+TEST_CASE("Deque Iterator operations", "[Deque][Iterator]") {
+    SECTION("Basic iterator functionality") {
+        Deque<int> deque = {1, 2, 3, 4, 5};
+
+        // Test begin() and end()
+        auto it = deque.begin();
+        auto end_it = deque.end();
+
+        REQUIRE(*it == 1);
+
+        // Test dereference operator
+        REQUIRE(*it == 1);
+        *it = 10;
+        REQUIRE(*it == 10);
+        REQUIRE(deque[0] == 10);
+    }
+
+    SECTION("Iterator increment operations") {
+        Deque<int> deque = {1, 2, 3, 4, 5};
+        auto it = deque.begin();
+
+        // Test prefix increment
+        REQUIRE(*it == 1);
+        ++it;
+        REQUIRE(*it == 2);
+        ++it;
+        REQUIRE(*it == 3);
+
+        // Test postfix increment
+        auto old_it = it++;
+        REQUIRE(*old_it == 3);
+        REQUIRE(*it == 4);
+    }
+
+    SECTION("Iterator decrement operations") {
+        Deque<int> deque = {1, 2, 3, 4, 5};
+        auto it = deque.begin();
+
+        // Move to middle
+        ++it;
+        ++it;
+        REQUIRE(*it == 3);
+
+        // Test prefix decrement
+        --it;
+        REQUIRE(*it == 2);
+        --it;
+        REQUIRE(*it == 1);
+
+        // Test postfix decrement
+        ++it;
+        ++it;
+        REQUIRE(*it == 3);
+        auto old_it = it--;
+        REQUIRE(*old_it == 3);
+        REQUIRE(*it == 2);
+    }
+
+    SECTION("Iterator traversal") {
+        Deque<int> deque;
+        for (int i = 0; i < 10; ++i) {
+            deque.push_back(i);
+        }
+
+        // Forward traversal
+        int expected = 0;
+        for (auto it = deque.begin(); it.current_array != nullptr; ++it) {
+            REQUIRE(*it == expected);
+            ++expected;
+        }
+        REQUIRE(expected == 10);
+
+        // Manual traversal using next()
+        auto it = deque.begin();
+        for (int i = 0; i < 10; ++i) {
+            REQUIRE(*it == i);
+            it = it.next();
+        }
+        REQUIRE(it.current_array == nullptr); // Should be at end
+    }
+
+    SECTION("Iterator with large deque across multiple FixedArrays") {
+        Deque<int> deque;
+        constexpr int num_elements = 10000; // Ensure multiple FixedArrays
+
+        for (int i = 0; i < num_elements; ++i) {
+            deque.push_back(i);
+        }
+
+        // Test forward iteration through all elements
+        int count = 0;
+        for (auto it = deque.begin(); it.current_array != nullptr; ++it) {
+            REQUIRE(*it == count);
+            ++count;
+        }
+        REQUIRE(count == num_elements);
+
+        // Test that we can modify elements through iterator
+        auto it = deque.begin();
+        for (int i = 0; i < 100; ++i) {
+            *it = i * 10;
+            ++it;
+        }
+
+        // Verify modifications
+        for (int i = 0; i < 100; ++i) {
+            REQUIRE(deque[i] == i * 10);
+        }
+    }
+
+    SECTION("Iterator with mixed push operations") {
+        Deque<int> deque;
+
+        // Create a pattern: push_front some, push_back some
+        for (int i = 0; i < 5; ++i) {
+            deque.push_front(-i - 1); // -1, -2, -3, -4, -5
+            deque.push_back(i + 1); //  1,  2,  3,  4,  5
+        }
+
+        // Expected order: [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5]
+        std::vector<int> expected = {-5, -4, -3, -2, -1, 1, 2, 3, 4, 5};
+
+        int index = 0;
+        for (auto it = deque.begin(); it.current_array != nullptr; ++it) {
+            REQUIRE(*it == expected[index]);
+            ++index;
+        }
+        REQUIRE(index == expected.size());
+    }
+
+    SECTION("Range-based for loop") {
+        Deque<std::string> deque = {"hello", "world", "test"};
+
+        std::vector<std::string> collected;
+        for (const auto &item: deque) {
+            collected.push_back(item);
+        }
+
+        REQUIRE(collected.size() == 3);
+        REQUIRE(collected[0] == "hello");
+        REQUIRE(collected[1] == "world");
+        REQUIRE(collected[2] == "test");
+    }
+
+    SECTION("Empty deque iterator") {
+        Deque<int> deque;
+
+        auto begin_it = deque.begin();
+        auto end_it = deque.end();
+
+        // For empty deque, begin should point to end immediately
+        REQUIRE(begin_it.current_array == nullptr); // Points to the initial FixedArray
+        REQUIRE(end_it.current_array == nullptr);
+        ++begin_it;
+        REQUIRE(begin_it.current_array == nullptr);
+    }
+
+    SECTION("Iterator prev() method") {
+        Deque<int> deque = {1, 2, 3, 4, 5};
+
+        // Start from end and work backwards using prev()
+        auto it = deque.end().prev();
+        REQUIRE(*it == 5);
+
+        it = it.prev();
+        REQUIRE(*it == 4);
+
+        it = it.prev();
+        REQUIRE(*it == 3);
+
+        it = it.prev();
+        REQUIRE(*it == 2);
+
+        it = it.prev();
+        REQUIRE(*it == 1);
+    }
+
+    SECTION("Iterator boundary conditions") {
+        Deque<int> deque;
+
+        // Test with exactly one element
+        deque.push_back(42);
+        auto it = deque.begin();
+        REQUIRE(*it == 42);
+
+        ++it;
+        REQUIRE(it.current_array == nullptr); // Should be at end
+
+        // Test prev from end
+        it = deque.end().prev();
+        REQUIRE(*it == 42);
     }
 }

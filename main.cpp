@@ -1,5 +1,5 @@
-int global_array[100] = {-1};
+#include <iostream>
 
 int main(const int argc, char **argv) {
-    return global_array[argc + 100]; // global buffer overflow
+    std::cout << "hello" << std::endl;
 }

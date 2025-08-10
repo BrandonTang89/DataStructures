@@ -11,9 +11,8 @@ Collection of arbitrary data structures implemented in C++.
   - Internally relies on a circular buffer to store pointers to the fixed length arrays
 
 To do (deque):
-- Ensure deque calls the relevant constructors and deconstructors properly, with std:;string tests
 - Caching of memory allocations and deallocations for the fixed length arrays
-- Iterators
+- const iterators
 
 To do (General):
 - Benchmarking
