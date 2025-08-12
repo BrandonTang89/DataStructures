@@ -12,6 +12,7 @@ class CircularBuffer {
             operator delete[](ptr, std::align_val_t{alignof(T)});
         }
     };
+
     std::unique_ptr<std::byte[], AlignedDeleter> data_storage;
 
     T *data{nullptr};
@@ -89,10 +90,38 @@ public:
         size_ = 0;
     }
 
+    // Rule of 5 Methods
     ~CircularBuffer() {
         for (size_t i = 0; i < size_; ++i) {
             data[(begin + i) % capacity_].~T(); // Explicitly call destructor
         }
+    }
+
+    CircularBuffer &operator=(const CircularBuffer &) = delete;
+
+    CircularBuffer(const CircularBuffer &) = delete;
+
+    CircularBuffer &operator=(CircularBuffer &&other) noexcept {
+        if (this != &other) {
+            for (size_t i = 0; i < size_; ++i) {
+                data[(begin + i) % capacity_].~T(); // Explicitly call destructor
+            }
+            data_storage = std::move(other.data_storage);
+            data = other.data;
+            begin = other.begin;
+            end = other.end;
+            size_ = other.size_;
+            capacity_ = other.capacity_;
+            other.data = nullptr; // Prevent double deletion
+        }
+        return *this;
+    }
+
+    CircularBuffer(CircularBuffer &&other) noexcept
+        : data_storage(std::move(other.data_storage)), data(other.data),
+          begin(other.begin), end(other.end), size_(other.size_),
+          capacity_(other.capacity_) {
+        other.data = nullptr; // Prevent double deletion
     }
 
     void push_back(const T &value) requires std::copy_constructible<T> {

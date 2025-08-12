@@ -2,6 +2,7 @@
 #include "Deque.h"
 #include <string>
 #include <vector>
+#include "TestingTracker.h"
 
 TEST_CASE("Deque construction", "[Deque]") {
     SECTION("Default construction") {
@@ -445,4 +446,20 @@ TEST_CASE("Deque Iterator operations", "[Deque][Iterator]") {
         it = deque.end().prev();
         REQUIRE(*it == 42);
     }
+}
+
+
+TEST_CASE("Deque element construction/destruction count", "[Deque][Lifetime]") {
+    TestingTracker::constructed = 0;
+    TestingTracker::destructed = 0;
+
+    constexpr int num_elements = 100; {
+        Deque<TestingTracker> deque;
+        for (int i = 0; i < num_elements; ++i) {
+            deque.emplace_back();
+        }
+        REQUIRE(TestingTracker::constructed == num_elements);
+        REQUIRE(deque.size() == num_elements);
+    } // Deque goes out of scope, all elements should be destructed
+    REQUIRE(TestingTracker::destructed == num_elements);
 }

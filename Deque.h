@@ -9,6 +9,7 @@
 #include <memory>
 
 #include "CircularBuffer.h"
+#include "CachingAllocator.h"
 
 template<typename T>
 class Deque {
@@ -28,7 +29,8 @@ class Deque {
         }
     };
 
-    CircularBuffer<std::unique_ptr<FixedArray> > buffer{};
+    CachingAllocator<FixedArray> allocator{5};
+    CircularBuffer<std::unique_ptr<FixedArray, CachingAllocator<FixedArray> &> > buffer{};
     // Implicitly, these are on the first and last FixedArray, which may be the same
     size_t first_idx = 0; // inv: 0 <= first_idx < fixed_arr_n_elem
     size_t last_idx = 0; // inv: 0 < last_idx <= fixed_arr_n_elem
@@ -38,7 +40,7 @@ class Deque {
     void emplace_front_impl(Args &&... value) {
         if (first_idx == 0) [[unlikely]] {
             FixedArray *first_array_ptr = buffer.front().get();
-            buffer.push_front(std::make_unique<FixedArray>());
+            buffer.push_front(allocator.allocate());
             buffer.front()->next = first_array_ptr;
             first_array_ptr->prev = buffer.front().get();
             first_idx = fixed_arr_n_elem;
@@ -53,7 +55,7 @@ class Deque {
     void emplace_back_impl(Args &&... value) {
         if (last_idx == fixed_arr_n_elem) [[unlikely]] {
             FixedArray *last_array_ptr = buffer.back().get();
-            buffer.push_back(std::make_unique<FixedArray>());
+            buffer.push_back(allocator.allocate());
             buffer.back()->prev = last_array_ptr;
             last_array_ptr->next = buffer.back().get();
             last_idx = 0;
@@ -145,15 +147,45 @@ class Deque {
 
 public:
     Deque() {
-        buffer.push_back(std::make_unique<FixedArray>());
+        buffer.push_back(allocator.allocate());
     }
 
     Deque(std::initializer_list<T> init) {
-        buffer.push_back(std::make_unique<FixedArray>());
+        buffer.push_back(allocator.allocate());
         for (const auto &value: init) {
             emplace_back_impl(value);
         }
     }
+
+    // Rule of 5 Methods
+    ~Deque() {
+        for (T &item: *this) {
+            item.~T(); // Explicitly call destructor for each element
+        }
+    }
+
+    Deque(const Deque &other) = delete;
+
+    Deque &operator=(const Deque &other) = delete;
+
+    Deque(Deque &&other) noexcept
+        : allocator(std::move(other.allocator)), buffer(std::move(other.buffer)),
+          first_idx(other.first_idx), last_idx(other.last_idx), size_(other.size_) {
+        other.first_idx = 0;
+        other.last_idx = 0;
+        other.size_ = 0;
+    }
+
+    Deque &operator=(Deque &&other) noexcept {
+        if (this != &other) {
+            for (T &item: *this) {
+                item.~T();
+            }
+            new(this) Deque(std::move(other));
+        }
+        return *this;
+    }
+
 
     void push_back(const T &value) requires std::copy_constructible<T> {
         emplace_back_impl(value);
