@@ -249,3 +249,361 @@ TEST_CASE("CircularBuffer element construction/destruction count", "[CircularBuf
 
     REQUIRE(TestingTracker::destructed == num_elements);
 }
+
+TEST_CASE("CircularBuffer Iterator functionality", "[CircularBuffer][Iterator]") {
+    SECTION("Basic iterator operations") {
+        CircularBuffer<int> buffer(4);
+        buffer.push_back(10);
+        buffer.push_back(20);
+        buffer.push_back(30);
+
+        auto it = buffer.begin();
+        REQUIRE(*it == 10);
+        ++it;
+        REQUIRE(*it == 20);
+        ++it;
+        REQUIRE(*it == 30);
+        ++it;
+        REQUIRE(it == buffer.end());
+    }
+
+    SECTION("Iterator dereference and modification") {
+        CircularBuffer<int> buffer(3);
+        buffer.push_back(1);
+        buffer.push_back(2);
+        buffer.push_back(3);
+
+        auto it = buffer.begin();
+        *it = 100;
+        REQUIRE(buffer[0] == 100);
+        REQUIRE(*it == 100);
+
+        ++it;
+        *it = 200;
+        REQUIRE(buffer[1] == 200);
+        REQUIRE(*it == 200);
+    }
+
+    SECTION("Range-based for loop") {
+        CircularBuffer<int> buffer(5);
+        for (int i = 1; i <= 5; ++i) {
+            buffer.push_back(i * 10);
+        }
+
+        std::vector<int> collected;
+        for (const auto& value : buffer) {
+            collected.push_back(value);
+        }
+
+        REQUIRE(collected.size() == 5);
+        for (size_t i = 0; i < 5; ++i) {
+            REQUIRE(collected[i] == (i + 1) * 10);
+        }
+    }
+
+    SECTION("Range-based for loop with modification") {
+        CircularBuffer<int> buffer(3);
+        buffer.push_back(1);
+        buffer.push_back(2);
+        buffer.push_back(3);
+
+        for (auto& value : buffer) {
+            value *= 2;
+        }
+
+        REQUIRE(buffer[0] == 2);
+        REQUIRE(buffer[1] == 4);
+        REQUIRE(buffer[2] == 6);
+    }
+
+    SECTION("Iterator with wraparound") {
+        CircularBuffer<int> buffer(4);
+
+        // Fill buffer
+        for (int i = 0; i < 4; ++i) {
+            buffer.push_back(i);
+        }
+
+        // Remove from front and add to back to cause wraparound
+        buffer.pop_front(); // Remove 0
+        buffer.pop_front(); // Remove 1
+        buffer.push_back(4); // Add 4
+        buffer.push_back(5); // Add 5
+
+        // Buffer now contains [2, 3, 4, 5] with wraparound
+        std::vector<int> expected = {2, 3, 4, 5};
+        std::vector<int> actual;
+
+        for (const auto& value : buffer) {
+            actual.push_back(value);
+        }
+
+        REQUIRE(actual == expected);
+    }
+
+    SECTION("Empty buffer iteration") {
+        CircularBuffer<int> buffer(4);
+
+        auto begin_it = buffer.begin();
+        auto end_it = buffer.end();
+
+        REQUIRE(begin_it == end_it);
+
+        // Range-based for loop should not execute
+        int count = 0;
+        for (const auto& value : buffer) {
+            ++count;
+            (void)value; // Suppress unused variable warning
+        }
+        REQUIRE(count == 0);
+    }
+
+    SECTION("Single element iteration") {
+        CircularBuffer<int> buffer(4);
+        buffer.push_back(42);
+
+        int count = 0;
+        for (const auto& value : buffer) {
+            REQUIRE(value == 42);
+            ++count;
+        }
+        REQUIRE(count == 1);
+    }
+}
+
+TEST_CASE("CircularBuffer Iterator arithmetic operations", "[CircularBuffer][Iterator]") {
+    SECTION("Iterator increment and decrement") {
+        CircularBuffer<int> buffer(5);
+        for (int i = 0; i < 5; ++i) {
+            buffer.push_back(i * 10);
+        }
+
+        auto it = buffer.begin();
+
+        // Test prefix increment
+        REQUIRE(*it == 0);
+        REQUIRE(*(++it) == 10);
+        REQUIRE(*it == 10);
+
+        // Test postfix increment
+        REQUIRE(*(it++) == 10);
+        REQUIRE(*it == 20);
+
+        // Test prefix decrement
+        REQUIRE(*(--it) == 10);
+        REQUIRE(*it == 10);
+
+        // Test postfix decrement
+        REQUIRE(*(it--) == 10);
+        REQUIRE(*it == 0);
+    }
+
+    SECTION("Iterator addition and subtraction") {
+        CircularBuffer<int> buffer(5);
+        for (int i = 0; i < 5; ++i) {
+            buffer.push_back(i * 10);
+        }
+
+        auto it = buffer.begin();
+
+        // Test addition
+        auto it2 = it + 2;
+        REQUIRE(*it2 == 20);
+
+        auto it3 = it + 4;
+        REQUIRE(*it3 == 40);
+
+        // Test subtraction
+        auto it4 = it3 - 2;
+        REQUIRE(*it4 == 20);
+
+        // Test compound assignment
+        it += 3;
+        REQUIRE(*it == 30);
+
+        it -= 1;
+        REQUIRE(*it == 20);
+    }
+
+    SECTION("Iterator comparison operations") {
+        CircularBuffer<int> buffer(5);
+        for (int i = 0; i < 5; ++i) {
+            buffer.push_back(i);
+        }
+
+        auto it1 = buffer.begin();
+        auto it2 = buffer.begin() + 2;
+        auto it3 = buffer.end();
+
+        REQUIRE(it1 < it2);
+        REQUIRE(it2 > it1);
+        REQUIRE(it1 <= it2);
+        REQUIRE(it2 >= it1);
+        REQUIRE(it1 != it2);
+        REQUIRE(it1 == buffer.begin());
+
+        REQUIRE(it2 < it3);
+        REQUIRE(it3 > it2);
+    }
+
+    SECTION("Iterator distance") {
+        CircularBuffer<int> buffer(5);
+        for (int i = 0; i < 5; ++i) {
+            buffer.push_back(i);
+        }
+
+        auto it1 = buffer.begin();
+        auto it2 = buffer.begin() + 3;
+        auto it3 = buffer.end();
+
+        REQUIRE(it2 - it1 == 3);
+        REQUIRE(it3 - it1 == 5);
+        REQUIRE(it3 - it2 == 2);
+    }
+}
+
+TEST_CASE("CircularBuffer Const Iterator functionality", "[CircularBuffer][ConstIterator]") {
+    SECTION("Const iterator basic operations") {
+        CircularBuffer<int> buffer(3);
+        buffer.push_back(10);
+        buffer.push_back(20);
+        buffer.push_back(30);
+
+        const auto& const_buffer = buffer;
+
+        auto cit = const_buffer.begin();
+        REQUIRE(*cit == 10);
+        ++cit;
+        REQUIRE(*cit == 20);
+        ++cit;
+        REQUIRE(*cit == 30);
+        ++cit;
+        REQUIRE(cit == const_buffer.end());
+    }
+
+    SECTION("Const iterator range-based for loop") {
+        CircularBuffer<std::string> buffer(3);
+        buffer.push_back("hello");
+        buffer.push_back("world");
+        buffer.push_back("test");
+
+        const auto& const_buffer = buffer;
+
+        std::vector<std::string> collected;
+        for (const auto& value : const_buffer) {
+            collected.push_back(value);
+        }
+
+        REQUIRE(collected.size() == 3);
+        REQUIRE(collected[0] == "hello");
+        REQUIRE(collected[1] == "world");
+        REQUIRE(collected[2] == "test");
+    }
+
+    SECTION("cbegin and cend methods") {
+        CircularBuffer<int> buffer(3);
+        buffer.push_back(1);
+        buffer.push_back(2);
+        buffer.push_back(3);
+
+        auto cit = buffer.cbegin();
+        REQUIRE(*cit == 1);
+        ++cit;
+        REQUIRE(*cit == 2);
+        ++cit;
+        REQUIRE(*cit == 3);
+        ++cit;
+        REQUIRE(cit == buffer.cend());
+    }
+}
+
+TEST_CASE("CircularBuffer Iterator with complex operations", "[CircularBuffer][Iterator]") {
+    SECTION("Iterator after buffer resize") {
+        CircularBuffer<int> buffer(4);
+
+        // Fill buffer to capacity
+        for (int i = 0; i < 4; ++i) {
+            buffer.push_back(i);
+        }
+
+        // Add one more to trigger resize
+        buffer.push_back(4);
+
+        // Verify iteration works after resize
+        std::vector<int> expected = {0, 1, 2, 3, 4};
+        std::vector<int> actual;
+
+        for (const auto& value : buffer) {
+            actual.push_back(value);
+        }
+
+        REQUIRE(actual == expected);
+    }
+
+    SECTION("Iterator with pop operations") {
+        CircularBuffer<int> buffer(6);
+
+        // Fill buffer
+        for (int i = 0; i < 6; ++i) {
+            buffer.push_back(i * 10);
+        }
+
+        // Remove some elements
+        buffer.pop_front(); // Remove 0
+        buffer.pop_back();  // Remove 50
+
+        // Verify iteration works correctly
+        std::vector<int> expected = {10, 20, 30, 40};
+        std::vector<int> actual;
+
+        for (const auto& value : buffer) {
+            actual.push_back(value);
+        }
+
+        REQUIRE(actual == expected);
+    }
+
+    SECTION("Iterator with mixed push/pop causing wraparound") {
+        CircularBuffer<int> buffer(4);
+
+        // Fill buffer
+        for (int i = 0; i < 4; ++i) {
+            buffer.push_back(i);
+        }
+
+        // Create wraparound scenario
+        buffer.pop_front(); // Remove 0
+        buffer.pop_front(); // Remove 1
+        buffer.push_back(4); // Add 4
+        buffer.push_back(5); // Add 5 (triggers resize)
+
+        // Buffer should now contain [2, 3, 4, 5]
+        std::vector<int> expected = {2, 3, 4, 5};
+        std::vector<int> actual;
+
+        for (const auto& value : buffer) {
+            actual.push_back(value);
+        }
+
+        REQUIRE(actual == expected);
+    }
+
+    SECTION("Iterator pointer access") {
+        struct TestStruct {
+            int value;
+            TestStruct(int v) : value(v) {}
+        };
+
+        CircularBuffer<TestStruct> buffer(3);
+        buffer.emplace_back(10);
+        buffer.emplace_back(20);
+        buffer.emplace_back(30);
+
+        auto it = buffer.begin();
+        REQUIRE(it->value == 10);
+        ++it;
+        REQUIRE(it->value == 20);
+        ++it;
+        REQUIRE(it->value == 30);
+    }
+}
