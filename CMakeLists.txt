@@ -8,13 +8,18 @@ set(CMAKE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=address,undefined")
 find_package(Catch2)
 
 add_executable(DataStructures main.cpp
-        CachingAllocator.h)
+        CachingAllocator.h
+        WideSegmentTree.h
+        Vector.h
+        test_vector.cpp)
 
 add_executable(tests
         test_circular_buffer.cpp
         test_deque.cpp
+        test_vector.cpp
         TestingTracker.h
-        TestingTracker.cpp)
+        TestingTracker.cpp
+        WideSegmentTree.h)
 target_link_libraries(tests PRIVATE Catch2::Catch2WithMain)
 enable_testing()
 add_test(NAME CircularBufferTests COMMAND tests)
